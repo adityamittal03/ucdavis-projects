@@ -1,0 +1,334 @@
+---
+title: "Final Project:"
+subtitle: "STA 141A Fundamentals of Statistical Data Science"
+author: "Joyce Lu, Aditya Mittal, Olga Perez, Shelly Sagy, Hanah Shih"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  error = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  comment = NA,
+  echo = FALSE, # hide all R codes!!
+  fig.width=5, fig.height=4, #set figure size
+  fig.align='center', #center plot
+  options(knitr.kable.NA = ''), #do not print NA in knitr table
+  tidy = FALSE #add line breaks in R codes
+)
+
+library('ggplot2')
+library('lmtest')
+library('betareg')
+library('car')
+```
+
+# Group 6
+
+### Member Names, Emails, and Contribution: 
+
+- Joyce Lu (jjjlu@ucdavis.edu): Worked on explaining each step of the code, the interpretation and analysis of the data, and used results to help draw conclusions. Ensured that contents of the report satisfy all the project requirements.
+
+- Aditya Mittal (adimittal@ucdavis.edu): Built the foundation of our code and continuously worked on it, debugging and adding to it to fulfill the requirements and our project goal. Implemented a new type of regression model, beta regression, and explored its new assumptions to fit our data set. 
+
+- Olga Perez (ocaperez@ucdavis.edu): Built the foundation of our code and continued to develop it. Worked closely with Aditya to fix errors and test for significance of parameters. 
+
+- Shelly Sagy (snsagy@ucdavis.edu): Worked on the interpretation and the writing of the report. Helped with researching the data and understanding it. Worked a lot on the code with helping find a smaller nested model for our data and helped with interpretations of our results. 
+
+- Hanah Shih (hhshih@ucdavis.edu): Helped with researching the data heavily, figuring out a project goal, coding of the visualization parts, and the interpretations and findings from the graphs that we created. Build the report itself, writing out the context and conclusions. 
+
+Everyone, however, knows each part of the project and each group member was consulted to make sure everyone was on the same page about every part. We met both in person, Zoom, and office hours to complete this project.
+
+# Introduction
+
+Spotify is the largest music streaming platform in the world, with 433 million subscribers and a catalog of over 80 million songs. With so many song options and so much potential audience outreach, artists need to ensure their songs perfect the “formula” to maximize their popularity and streams. Spotify has collected data on every song, including instrumentals, energy, and, most importantly, a measure of popularity. Our study aims to understand the relation of song popularity and these specific parameters respective to each song in the Spotify API data.
+
+## Research Question
+
+The overall goal of this project is to create statistical models that identify which parameters have significant influence on the popularity of songs on Spotify. Thus, the primary purpose of this project is inference, answering the question, “Which factor most significantly has an effect on a song's popularity on Spotify?” We’d like to investigate what secondary factors also contribute to a song’s popularity rating. For this data, we're also interested in identifying if there's multicollinearity between variables - certain parameters, such as energy and loudness, may realistically have potential collinearity between them. Lastly, we're testing the predictive power of our data between the different models that we've fitted to check how well our models predict unseen data. 
+
+## Data Description
+
+Our selected data source is from Kaggle: https://www.kaggle.com/datasets/yasserh/song-popularity-data set
+
+Taken from Spotify’s API, this data set explores different parameters of music. The data set contains 18,835 observations with 15 variables: 1 column showing the title of the song (we chose to remove this column because it is ultimately not important to our project’s focus) and 14 parameters related to each individual song. Ultimately, our primary goal is to determine which factor is most significant effect on a song' popularity rating (integer between 0 and 100). The other 13 covariates include:
+
+- Acousticness: A confidence measure from 0.0 to 1.0 of whether the track is acoustic.
+- Danceability: Describes how suitable a track is for dancing. 
+- Duration_ms: The duration of the track in milliseconds. 
+- Energy: Energy is a measure from 0.0 to 1.0, measure of intensity and activity.
+- Instrumentalness: Predicts whether a track contains vocals. 
+- Key: The key the track is in. 
+- Liveness: Detects the presence of an audience in the recording. 
+- Loudness: The overall loudness of a track in decibels (dB). 
+- Mode: Mode indicates the modality (major or minor) of a track. Categorical binary variable with 2 levels: 1 is major, 0 is minor.
+- Speechiness: Detects the presence of spoken words in a track. 
+- Tempo: The overall estimated tempo of a track in beats per minute (BPM). 
+- Time_signature: An estimated time signature. 
+- Audio_valence: Describes the musical positiveness conveyed by a track.
+
+# Methodology 
+
+We are conducting supervised statistical learning to see which factors most impact song popularity, our response variable Y. Our project process consisted of these several steps:
+
+1. Data cleanup: Setting audio_mode as a categorical variable, bound "song_popularity" as a  percentage rating between 0 and 1, remove NA values, duplicate data etc. 
+2. Data visualization: Create summary tables and diagnostic plots to view the overall distribution of data. 
+3. Full model: Fitting the full linear regression model with all parameters to test the model assumptions.
+4. Transformed model: Try a logit transformation on Y to alleviate some problems and meet model assumptions. 
+5. Beta regression model: Fitting a beta regression model. Information on why we chose the following model is attached here: https://cran.r-project.org/web/packages/betareg/vignettes/betareg.pdf. More details are below.
+6. Reduced model: Finding a reduced beta regression model and testing both nested models. 
+7. K-Fold Cross Validation: test the predictive power of beta regression models we have fitted.
+
+## Data cleanup
+
+There were several critical data points that we altered to improve our data quality. We first removed the "song_name" from the data set as it is not important to our project’s focus. We converted audio_mode into a binary categorical variable with 2 levels: 1 (Major mode) and 0 (Minor mode) since a song's modality differs between major and minor. The remaining 12 covariates are left as continuous variables. There weren't any N/A values present in the data set. We removed all duplicate data and only kept the unique rows, which removed 3911 rows.
+
+Initially, song_popularity is scored as an integer between 0 to 100 - indicating a percentage rating of popularity. Since our data is bounded, OLS regression model is not best suited and we may consider fitting a type of generalized linear model. We will bound our data between 0 and 1 by dividing each observation by 100 - ultimately we aren't exactly transforming our data and may continue with the same interpretations of the results. The idea of song rating itself interpreted as a percentage will continue to hold, and we can fit a more appropriate beta regression model later on.
+
+```{r}
+### preparing the data set 
+song.data <- read.csv("~/Desktop/Fall Quarter/STA 141A/final/song_data.csv")
+song.data = subset(song.data, select = -c(song_name)) # removing "song_name" from the data set
+song.data$audio_mode = as.factor(song.data$audio_mode) # convert audio_mode to a factor w/ two levels: 0 (minor) and 1 (major)
+song.data = na.omit(song.data) # removing all NA values // none found
+song.data = unique(song.data) # removing all duplicate values // 3911 rows found
+song.data$song_popularity = song.data$song_popularity/100 # divide song_popularity ratings by 100
+head(song.data) # view head data set
+
+```
+
+## Data Visualization
+
+We created scatterplots of every continous predictors to get a visualization of our 15000 data points and identify potential trends between the covariates in response to song_popularity. 
+
+Summary of data set:
+
+```{r}
+### data visualization
+knitr::kable(summary(song.data)) ### summary statistics
+
+```
+
+From the summary table, we can that song popularity is bounded between [0, 1], with an overall mean of 0.4875. Again, our response values are bounded, so fitting an OLS regression model will violate several assumptions.
+
+```{r}
+### scatter plot for response to other variables
+require('tidyr')
+visualized.data = pivot_longer(song.data, c(2:9, 11:14))
+visualized.data =  subset(visualized.data, select = -c(audio_mode))
+ggplot(visualized.data, aes(value, song_popularity)) +  theme_minimal() + geom_point(size=0.0001) + facet_wrap('name', scales = 'free') + labs(title = "Scatterplot Matrix of Song_Popularity vs Covariates")
+
+```
+
+None of the scatter plots outright showed any major non-linear relationships between the response variable and the covariates, so we can conclude that there is no distinct relationships that may cause an issue with linearity of an OLS model. We may try to fit a linear regression model for our data without having to create specific transformations or polynomial terms for the individual covariates. *Note:* Since we have so many data points, there's an issue of overplotting and its harder to see any specific relationship between the variables. 
+
+```{r}
+song.no.qualitative = song.data[,-c(10)]
+knitr::kable(cor(song.no.qualitative)) #correlation matrix
+
+```
+
+Looking at our correlation matrix, the variables that were most strongly correlated were ‘loudness’ and ‘energy’, with a correlation coefficient of 0.765675. There's also some correlation between acousticness and loudness with correlation coefficient -0.5696581, followed by acousticness and energy with $r$ =  -0.6792351. We will look out for potential multicollinearity between these three variables within our analysis. In general, most of the $r$ values are relatively small and close to 0, indicating little to no correlation between the remaining variables.
+
+Since the interval of our response variable is between [0,1], we cannot fit a regular OLS regression model. Ultimately, fitting a simple linear model may actually lead to predictions that fall outside of the allowed values and would make no practical sense. Furthermore, regressions involving data from the unit interval, such as rates, violate the assumption of normality and homoscedasticity. For this reason, we may conduct a logit transformation so our response assumes values over the real number line before trying to fit a linear regression model. However, this approach also has several shortcomings. Lastly, as the relationship is bounded, a non-linear relationship itself may lead to a better fit or we can try fitting a beta regression model to try and achieve more accurate & useful results. 
+
+### Fitting a full linear model with all covariates.
+
+We conducted linear regression to fit the full model with all the given predictors.
+```{r}
+## fitting a full model
+full_model = lm(song_popularity~., data = song.data) # fit full model with all variables
+summary(full_model)
+
+```
+
+Attached above is the summary output for the full model. It appears acousticness, danceability, energy, instrumentalness, liveness, loudness, and audio_valence are considered to be significant for $\alpha$ level 0.01. It is important to note that our full model had a low R-square value of 0.02255, which means only 2.3% of variation in our data is explained by our model. However, before conducting further any analysis on this model, we need to check its diagnostics and see if the linear regression assumptions are met to ensure the hypothesis testing results from our model are statistically accurate.
+
+```{r}
+par(mfrow=c(2,2))
+plot(full_model) # model diagnostics
+par(mfrow=c(1,1))
+
+```
+
+Due to the large number of observations, it was difficult to create solid conclusions. The QQ-plot exhibited heavy tails and a significant curve as it deviated from the normal QQ-line along both ends, indicating that the distribution of residuals is not normal. The Residuals vs. Fitted plot was hard to read due to over-plotting so we created a density contour plot:
+
+```{r}
+## contour density plot for fitted vs residuals since over-plotting
+ggplot(song.data, aes(x = full_model$fitted.values, y = full_model$residuals)) +
+ geom_point() + geom_density_2d() + labs(title = "Density Contour Plot for Fitted vs Residuals",
+         x = "Full Model Fitted Values",
+         y = "Full Model Residuals Values",
+         caption = "Data from kaggle.com")
+
+```
+
+The contour plot displays some heteroscedasticity since the lines greatly deviated from an expected circle or elliptical shape, again indicating unequal variance. We can solidify our findings here using the Breusch Pagan Test for heteroskedasticity.
+
+```{r}
+bptest(full_model) # breusch pagan test for heteroscedasticity
+
+```
+
+We used the Breusch Pagan Test to see whether the variance of the errors from a regression is dependent on the values of the independent variables. This test assumes that the error terms are normally distributed. The Breusch Pagan Test uses a chi-squared test statistic with a null hypothesis being that the variance is constant while the alternative hypothesis being that the variance is not constant. The results of this test on our full_model is a small p-value of 4.719e-16, which means that we reject the null hypothesis and conclude that there is unequal variance.
+
+```{r}
+knitr::kable(car::vif(full_model)) # check multicollinearity
+
+```
+
+From the Variance Inflation Factor values, x, we can see that there isn't much multicollinearity between the variables. Energy has highest VIF at 3.875072, followed by loudness at 3.020238, and acousticness at 2.040434. From the correlation matrix, we saw that there was potential multicollinearity between these variables; however, none of the VIF are very extremely high (ex: VIF >5), so there isn't much mutlicollinearity present and we don't need to remove any covariates.
+
+We can conclude that our model does not fit a linear regression model from our model diagnostics. Therefore, we should perform further data manipulation by conducting a logit transformation with hopes of alleviating some of these violations of assumptions.
+
+### Transforming Data
+The logit transformation pulls out the ends of the distribution by expanding the ends of the scale such that small differences in p have a larger difference on the logit scale. However, the regression parameters are interpretable in terms of the mean of transformed y, not in terms of the mean of y.
+
+The logit transformation can be applied as log(y/1-y), if the data is bounded between (0,1). Since we are bounded by [0,1], we will to make sure our data does not include 0's and 1's. We will first transform popularity with the formula = (song.data$song_popularity *(n - 1) + 0.5)/n, where n is the number of observations. This transformation is suggested to fit the beta regression model as well, as it adds/subtracts a negligible amount to 0's/1's, respectively. This makes sense as well, since in reality a song will not have exactly 0 popularity. 
+
+Attached are the residual plots for transformed data:
+
+```{r}
+## Transformed data
+n = nrow(song.data)
+song.data$song_popularity = (song.data$song_popularity *(n - 1) + 0.5)/n # transform to remove 0 and 1
+transformed.model = lm(log(song_popularity/(1-song_popularity)) ~., data = song.data) # fit full model with all variables
+
+par(mfrow=c(2,2))
+plot(transformed.model) # model diagnostics
+par(mfrow=c(1,1))
+
+## contour density plot for fitted vs residuals since over-plotting
+ggplot(song.data, aes(x = transformed.model$fitted.values, y = transformed.model$residuals)) +
+ geom_point() + geom_density_2d() + labs(title = "Density Contour Plot for Fitted vs Residuals",
+         x = "Full Model Fitted Values",
+         y = "Full Model Residuals Values",
+         caption = "Data from kaggle.com")
+```
+The QQ-plot exhibited heavy tails and a significant curve and deviation from the normal QQ-line, indicating that the distribution of data is not still normal. Furthermore, the contour plot between fitted vs residuals continued to display some heteroscedasticity since the lines still deviated from the expected circle or elliptical shape, again indicating unequal variance. 
+
+```{r}
+bptest(transformed.model) ## still doesn't show equal variance so linear model may not work
+```
+
+The Breusch Pagan test corrobartes our findings as we'd reject the null hypothesis in favor of the alternative and conclude that there is unequal variance. The p-value increased, suggesting we got closer to reaching equal variance but are still close to not meeting the homoscedasticity assumption. Ultimately, the transformation did not alleviate our issues so summary results from this model would not be exactly accurate either. Thus, we can now try fitting a beta regression model.
+
+### Fitting Beta Regression Model
+
+Our response variable is fitted between 0 and 1, thus it follows a beta distribution with a precision parameter $\phi$. Our data fits this model better as we don't need to follow the same assumptions as OLS regression model. 
+
+```{r}
+### Fit a betaregression model
+betareg_full = betareg(song_popularity ~., data = song.data)
+summary(betareg_full)
+```
+Beta regression works essentially like a generalized linear model with the logit link and a beta distributed random component. This regression model fits much better since our response is bounded between 0 and 1. It is important to note that several predictors that were significant in the linear model are no longer significant, ex: acousticness now has a very high p-value at 0.44 and is no longer significant. Thus, if we were to fit linear model our results would have been greatly varied. The pseudo $R^2$ is 0.01217, highlighting that only 1.2% of the variability in log odds of song_popularity can be explained by our model.
+
+We conducted testing to figure out which predictors are insignificant using z-test for significance at $\alpha$ = 0.01, and we used this information to create a reduced nested model so we could focus on the important factors. We’ll compare our nested models using the likelihood ratio test, comparing the overall the goodness of fit between the nested models. We're testing if we can drop the 5 covariates: acousticness, key, liveness, audio_mode, and time_signature from our model.
+
+```{r}
+betareg_reduced = betareg(song_popularity ~. - acousticness  - key - audio_mode - time_signature- liveness, data = song.data)
+lrtest(betareg_reduced,betareg_full) # test for both nested models
+```
+
+Our Hypothesis for the likelihood ratio test:
+
+- $H_0$: The full model and the nested model fit the data equally well. Thus, we will fit using the nested model.
+
+- $H_A$: The full model fits the data significantly better than the nested model. Thus, we will fit using the full model.
+
+Since our p-value 0.03 > alpha = 0.01. We would fail to reject our null hypothesis at alpha = 0.01 and conclude that our nested model can fit the data equally as well as and thus can be used. Thus, the reduced model will be our final model for inference on song_popularity.
+
+Checking for collinearity:
+```{r}
+knitr::kable(car::vif(betareg_reduced))
+```
+
+Again, there doesn't seem much multicollinearity between the covariates either in this reduced model. The highest VIF value is of loudness at approximately 3.0; this is well below VIF = 5 so we don't need to worry too much about multicollinearity in this reduced beta-regression model.
+
+Summary of reduced model:
+```{r}
+summary(betareg_reduced)
+```
+
+The pseudo $R^2$ is 0.01158, indicating that only 1.2% of variability in song_popularity can be explained by our model. Dropping the variables ultimately didn't have much effect on the $R^2$ value.  The covariates Instrumentalness, speechiness, danceability, audio_valence, energy, song_duration, loudness all have a significant effect on determining song_popularity at  $\alpha$ = 0.01. Overall, each individual predictor has a very small coefficient, which may be interpreted as: An increase in unit of instrumentalness decreases the $log$ $odds$ of song_popularity by 3.653e-01. while holding all other predictors constant. Similar interpretations follow for other covariates. 
+
+It is interesting to note that only danceability and loudness have a positive $\beta$ coefficient. Meanwhile, all the other covariates have negative effect - indicating that the increase in unit of these covariates actually causes a decrease in the log-odds of song_popularity.
+
+The precision parameter $\phi$ = 3.28074 , which is the approximately the same as $\phi$ for full model. Thus, dropping these variable does not have a significant impact on the precision parameter either.  
+
+### Prediction using K-fold CV for Beta Regression Model
+```{r}
+kfoldCV.beta.reg <- function(fit, k = 5) {
+  set.seed(2022)
+    n <- nrow(fit$model)
+    k <- min(n, k) # 
+    data <- fit$model[sample(1:n,n),] #reshuffle data
+    groups <- split(data, (1:n)%%k) #split data into k groups
+    MSE <- c()
+    for (i in 1:k) {
+        fit <- update(fit, data = do.call('rbind', groups[-i]))
+        yhat <- predict(fit, groups[[i]], 'response')
+        MSE[i] <- mean((groups[[i]]$song_popularity - yhat)^2)
+    }
+    return (mean(MSE))
+}
+
+b <- kfoldCV.beta.reg(betareg_full, k = 10)
+c <- kfoldCV.beta.reg(betareg_reduced, k = 10)
+
+paste0("MSE of Full Model: ", b)
+paste0("MSE of Reduced Model: ", c)
+
+```
+
+The MSEs for the full model and reduced model from K-fold CV are virtually the same and both very small. This indicates that when compared, the difference in predictive validity for both models is indiscernible. Because the difference in error is negligible same for both the full and reduced model, we know the reduced model is just as good as the full model. This supports our decision to use the reduced beta regression model as our final model.
+
+# Analysis of Data & Key Questions
+
+From our final model, we can conclude that the predictors with small p-values have a statistically significant effect in explaining song_popularity. Those predictors were song_duration, danceability, energy, instrumentalness, loudness, speechiness, tempo, and audio_valence. All of these covariates were statistically significant to our model at the pre-decided $\alpha$ level 0.01. Although each covariate has a small coefficient for it's respective $\beta$'s, each of these predictors is statistically significant in showing the effect on song_popularity.
+
+The beta regression model provides information on which music parameters the Spotify listeners prefer in their songs. As noted previously, only covariates loudness and danceability had a positive effect on the log-odds of song_popularity, holding all other predictors fixed. 
+
+- An increase in unit of danceability increase the $log$ $odds$ of song_popularity by 3.425e-01. while holding all other predictors constant. 
+
+This makes sense as songs that are more danceable and loud to ultimately lead to higher song_popularity rating. These songs are usually played often in various venues and can gain additional streams through this. 
+
+Regarding other covariate, if instrumentalness value is to 1.0, there are no lyrics. We see that an increase in 1 of instrumentalness is associated with a 3.653e-01 decrease of log-odds of song popularity, suggesting that listeners prefer music with lyrics. An increase in 1 of speechiness is associated with a 3.199e-01 decrease in log-odds of song popularity, showing that listeners prefer songs without talking. An increase in 1 of audio valence is associated with a 2.348e-01 decrease log-odds in song popularity, showing that listeners prefer more negative-sounding music. This is an interesting thing to note as we'd expect people to generally prefer most positive sounding music. An increase in 1 of energy is associated with a 0.29 decrease in song popularity, showing that listeners prefer quieter and calmer music. An increase in 1 ms of song duration is associated with decrease in log-odds of song popularity by 4.397e-07, showing that listeners prefer shorter songs to longer ones.
+
+Overall, our results were both surprising and unsurprising. We expected that listeners would prefer songs that had more vocals and were upbeat since that is what a lot pop songs are like. Additionally, since listeners' attention spans are getting shorter and shorter due to social media such as TikTok, we expected that listeners would prefer songs of shorter duration. However, it was surprising and slightly contradictory that listeners also prefer music that is negative and sad sounding since energetic and danceable songs tend to be popular. This shows that all types of songs are preferred across different listeners.
+
+To address feedback on our initial proposal, we tried to transform our response variable to meet the model assumption; however, this did not work as the assumptions remained violated. Since we didn't find any relationship between response and covariates, we didn't consider transformations for covariates either. Instead, we decided to switch to beta regression model as our final to keep our results interpretable. In terms of results from CV, our reduced beta regression model had a very close MSE on the testing data with the full model using K-fold. Thus, we may choose to use the reduced_model for prediction purposes too. Thus, we were able to find a more reduced model that still had similar predictive power as the full model. In case the MSE had a significant difference, we may have selected smaller model for inference but chosen the larger one for prediction (if the MSE for smaller model was much higher).
+
+## Key Questions
+
+- Which factor most significantly has an effect on a song's popularity on Spotify?
+
+Instrumentalness had the lowest p-value in our final reduced model, indicating that it has the greatest effect on song popularity. Realistically, this makes sense given that less instrumentals indicate a heavy influence of vocals on the overall musicality of a track, and in general people listen to more songs with vocals that songs without vocals. However, there were several other predictors that had similarly low p-values, so we cannot conclude that instrumentalness on its own is a good indicator of song popularity; rather it is a combination of all the aforementioned variables.
+
+- What other potential factors that affect a song’s popularity on Spotify?
+
+After going through numerous iterations of models for this data set, we determined that song_duration, danceability, energy, instrumentalness, loudness, speechiness, tempo, and audio_valence are the key factors that affect a song's popularity from $\alpha$ level 0.01. These are the factors that had statistically significant coefficients in our model, so we determined that they contribute to song popularity. Thus, we can conclude from this that there are acutally several different predictors that have a stastically signficant effect on song_popularity.
+
+- How strong is the multicollinearity between the potential predictors and how can we address this?
+
+There was not a significant amount of multicollinearity present within the predictors. Variables ‘loudness’ and ‘energy’, acousticness had higher correlation values. We confirmed the lack of multicollinearity by calculating Variance Inflation Factors, which showed that no variables needed to be removed due to multicollinearity to all VIF values being under 5. This was surprising, as we expected these covariates to higher collinearity in a practical sense. Although we didn't really need to drop any of the mentioned covariates above, we dropped acousticness anyways as it wasn't significant for our beta regression model. 
+
+# Conclusion
+
+There are multiple factors that can contribute to a song's popularity, but even if a song is able to optimize the amount of instrumentalness, speechiness, danceability, audio valence, energy, and song duration, it still may not maximize its popularity.
+
+We believe this is because there are too many outside variables that influence song popularity that aren't captured in the Spotify data set, or in any data set for that matter. There is much more that contributes to a song’s popularity than the song itself, such as song lyrics, marketing, viral TikTok trends, artist popularity, and more. Music taste is so personal and individualized that to formulate a perfect song would be to assume that everyone looks for the same thing in music.
+
+This research could be of interest to a music producer, artist, Spotify marketing employee, and many more. We believe that the main takeaway from this data is that the average Spotify listener is not boxed into one genre or type of music, and rather “popular music” actually describes a very wide range of genres. We hope that this encourages artists to feel that they have the range to explore many genres, and break outside of any prescribed “popular music formula” when creating music.
+
+This final project as a whole was a great experience to utilize our programming skills that have been accumulated throughout this course. We would like to credit Professor Kramlinger for giving us advice about model transformations, beta regression, and density plots. We would also like to give credit to our TA Ju-Sheng Hong, who helped us guide us through the project and project proposal. We made sure to use their suggestions and remove statistically insignificant parameters, apply the appropriate transformations to our data to better fit a linear model, and use cross-validation.
+
+### Appendix
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
+

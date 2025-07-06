@@ -1,0 +1,101 @@
+---
+title: "Final Project"
+author: "Aditya, Joyce, Jesse, Jackson"
+date: "06/07/2022"
+output: pdf_document
+---
+### Appendix
+```{r, eval = FALSE}
+### PART I
+# read dataset
+carseat = ISLR::Carseats
+head(carseat)
+
+# summary statistics
+summary(carseat)
+plot(carseat)
+carseat.no.qualitative = carseat[,-c(7,10,11)]
+cor(carseat.no.qualitative)
+
+# First-order regression model
+new.model1 = lm(Sales~ Income + Advertising + Population + Price + CompPrice + as.factor(ShelveLoc),
+                data = carseat)
+summary(new.model1)
+
+# diagnostics
+library(ggfortify)
+autoplot(new.model1)
+
+# multicollinearity
+car::vif(new.model1)
+
+# remedial measures
+# remove outliers
+find.outliers.new = rstandard(new.model1)
+possible.outlier.new = which(abs(find.outliers.new) > 3)  # we find legit outliers greater than 3
+
+# if we removed outliers with our new method
+newdata.new.no.outliers = carseat[-c(298,358),]
+new.model2 = 
+  lm(Sales~ Income + Advertising + Population + Price + CompPrice + as.factor(ShelveLoc), 
+     data = newdata.new.no.outliers)
+summary(new.model2)
+
+# brute-force analysis // I did not remove any outliers or perform remedial measures
+library(leaps)
+p2 = 7
+n2 = nrow(newdata.new.no.outliers)
+new.models = 
+  regsubsets(Sales~ Income + Advertising + Population + Price + CompPrice + as.factor(ShelveLoc), 
+             data = newdata.new.no.outliers, nvmax = p2 - 1)
+summary(new.models)
+results.sum.2 = summary(new.models)
+criteria2 = data.frame( Nvar = 1:(p2-1),
+                       R2adj = results.sum.2$adjr2,
+                       CP = results.sum.2$cp,
+                       BIC = results.sum.2$bic
+                       )
+which.best.subset.2 = data.frame(
+  R2adj = which.max(results.sum.2$adjr2),
+  CP = which.min(results.sum.2$cp),
+  BIC = which.min(results.sum.2$bic))
+
+which.best.subset.2 # new model brute force
+
+# stepwise selection new
+# backward
+Full1 = lm(Sales ~ ., data = newdata.new.no.outliers)
+backward1 = 
+  step(Full1, direction='backward', 
+       scope=formula(Full1), trace=0)
+backward1$anova
+#forward
+Empty1 = lm(Sales ~ 1, data= newdata.new.no.outliers)
+forward1 = 
+  step(Empty1, direction='forward', 
+       scope=formula(Full1), trace=0)
+forward1$anova
+#bidirectional
+both1 = 
+  step(Empty1, direction='both', 
+       scope=formula(Full1), trace=0)
+both1$anova
+
+# step 12, compare brute force to first order model
+brute.force.new = 
+  lm(Sales ~ ShelveLoc + Price + CompPrice + Advertising + 
+       Income, data =newdata.new.no.outliers)
+anova(brute.force.new, Full1) # pval < 0.05, we cannot drop variables
+
+#### PART TWO 
+CompPrice = c(89, 98, 114, 50, 174)
+Income = c(32, 22, 94, 37, 76)
+Advertising = c(9, 22, 40, 2, 13)
+Price = c(47, 200, 156, 103, 28)
+ShelveLoc = c("Bad", "Bad", "Medium", "Good", "Medium")
+self.made.dataset = 
+  data.frame(CompPrice, Income, Advertising, Price, 
+             ShelveLoc)
+predict(brute.force.new,self.made.dataset)
+
+```
