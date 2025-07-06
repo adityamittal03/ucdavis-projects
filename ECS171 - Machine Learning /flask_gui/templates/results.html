@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 80%;
+            max-width: 600px;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+        td {
+            font-size: 1.2em;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>Model Predictions</h1>
+    <table>
+        <tr>
+            <th>Model</th>
+            <th>Prediction</th>
+        </tr>
+        <tr>
+            <td>Linear Regression Model</td>
+            <td id="linear_regression">{{ predictions.linear_regression }}</td>
+        </tr>
+        <tr>
+            <td>Polynomial Regression Model</td>
+            <td id="polynomial_regression">{{ predictions.polynomial_regression }}</td>
+        </tr>
+        <tr>
+            <td>Random Forest Model</td>
+            <td id="random_forest">{{ predictions.random_forest }}</td>
+        </tr>
+        <tr>
+            <td>XGBoost Model</td>
+            <td id="XGBoost">{{ predictions.XGBoost }}</td>
+        </tr>
+        <tr>
+            <td>Neural Network Model</td>
+            <td id="neural_network">{{ predictions.neural_network }}</td>
+        </tr>
+    </table>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const formatNumber = (number) => {
+                return new Intl.NumberFormat().format(number);
+            };
+
+            document.getElementById("linear_regression").textContent = formatNumber({{ predictions.linear_regression }});
+            document.getElementById("polynomial_regression").textContent = formatNumber({{ predictions.polynomial_regression }});
+            document.getElementById("random_forest").textContent = formatNumber({{ predictions.random_forest }});
+            document.getElementById("XGBoost").textContent = formatNumber({{ predictions.XGBoost }});
+            document.getElementById("neural_network").textContent = formatNumber({{ predictions.neural_network }});
+        });
+    </script>
+</body>
+</html>

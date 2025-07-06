@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diamond Price Prediction Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            align-items: flex-start;
+        }
+        .intro-container, .form-container, .helper-container, .description-container, .importance-container, .thanks-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin: 10px;
+        }
+        .intro-container {
+            max-width: 500px;
+        }
+        .form-container {
+            width: 300px;
+        }
+        .description-container {
+            max-width: 500px;
+        }
+        .image-container {
+    text-align: center; /* Align the image in the center */
+    margin-top: 20px; /* Add some space between the content and the image */
+}
+
+.image-container img {
+    max-width: 100%; /* Ensure the image doesn't exceed its container */
+    height: auto; /* Maintain aspect ratio */
+}
+
+        h3 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        input, select {
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="submit"] {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+        .helper-container {
+            max-width: 200px;
+        }
+        .helper-container h4 {
+            margin-top: 0;
+        }
+        .helper-container ul {
+            padding-left: 20px;
+        }
+        .helper-container li {
+            margin-bottom: 5px;
+        }
+        .importance-container {
+          max-width: 300px;
+          background-color: #fff;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+          margin: 10px;
+        }
+        .importance-container h3 {
+          text-align: center;
+          color: #333;
+        }
+        .importance-container p {
+          margin-top: 10px;
+          line-height: 1.6;
+        }
+        .thanks-container {
+            max-width: 400px;
+            text-align: center;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="intro-container">
+            <h3>Welcome!</h3>
+            <p>Please fill out the form to get a prediction for the price of a diamond based on its characteristics. Use the helper guide for reference. Predictions from five machine learning algorithms are provided: Linear Regression, Polynomial Regression (Degree 2), Random Forests, XGBoosts, and an Artifical Neural Network.</p>
+            <div class="description-container">
+                <h4>Feature Descriptions</h4>
+                <p><strong>Carat:</strong> Weight of the diamond.</p>
+                <p><strong>Depth:</strong> Total depth percentage. Computed as: z / mean(x, y). </p>
+                <p><strong>Table:</strong> Width of top of diamond relative to Widest Point.</p>
+                <p><strong>x:</strong> Length of the diamond in mm.</p>
+                <p><strong>y:</strong> Width of the diamond in mm.</p>
+                <p><strong>z:</strong> Depth of the diamond in mm.</p>
+                <p><strong>Cut:</strong> Quality of the diamond's cut.</p>
+                <p><strong>Color:</strong> Color grade of the diamond.</p>
+                <p><strong>Clarity:</strong> Clarity grade of the diamond.</p>
+            </div>
+            <div class="image-container">
+              <img src="data:image/jpeg;base64,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" alt="Diamond Image">
+              </div>
+
+        </div>
+        
+        <div class="form-container">
+            <h3>Diamond Price Prediction Form</h3>
+            <form action="/result" method="POST">
+                <label for="carat">Carat</label>
+                <input type="number" id="carat" name="carat" step="0.01" required>
+                <br>
+                <label for="depth">Depth Percentage</label>
+                <input type="number" id="depth" name="depth" min="0" max="100" step="0.01" required>
+                <br>
+                <label for="table">Table</label>
+                <input type="number" id="table" name="table" min="0" max="100" step="0.01" required>
+                <br>
+                <label for="x">x</label>
+                <input type="number" id="x" name="x" step="0.01" required>
+                <br>
+                <label for="y">y</label>
+                <input type="number" id="y" name="y" step="0.01" required>
+                <br>
+                <label for="z">z</label>
+                <input type="number" id="z" name="z" step="0.01" required>
+                <br>
+                <label for="cut_encoded">Cut</label>
+                <select id="cut_encoded" name="cut_encoded" required>
+                    <option value="0">Fair</option>
+                    <option value="1">Good</option>
+                    <option value="2">Very Good</option>
+                    <option value="3">Premium</option>
+                    <option value="4">Ideal</option>
+                </select>
+                <br>
+                <label for="color_encoded">Color</label>
+                <select id="color_encoded" name="color_encoded" required>
+                    <option value="0">J</option>
+                    <option value="1">I</option>
+                    <option value="2">H</option>
+                    <option value="3">G</option>
+                    <option value="4">F</option>
+                    <option value="5">E</option>
+                    <option value="6">D</option>
+                </select>
+                <br>
+                <label for="clarity_encoded">Clarity</label>
+                <select id="clarity_encoded" name="clarity_encoded" required>
+                    <option value="0">I1</option>
+                    <option value="1">SI2</option>
+                    <option value="2">SI1</option>
+                    <option value="3">VS2</option>
+                    <option value="4">VS1</option>
+                    <option value="5">VVS2</option>
+                    <option value="6">VVS1</option>
+                    <option value="7">IF</option>
+                </select>
+                <br>
+                <input type="submit" value="Submit">
+            </form>
+        </div>
+
+        <div class="helper-container">
+            <h4>Helper Guide</h4>
+            <h5>Cut</h5>
+            <ul>
+                <li>0 - Fair</li>
+                <li>1 - Good</li>
+                <li>2 - Very Good</li>
+                <li>3 - Premium</li>
+                <li>4 - Ideal</li>
+            </ul>
+            <h5>Color</h5>
+            <ul>
+                <li>0 - J</li>
+                <li>1 - I</li>
+                <li>2 - H</li>
+                <li>3 - G</li>
+                <li>4 - F</li>
+                <li>5 - E</li>
+                <li>6 - D</li>
+            </ul>
+            <h5>Clarity</h5>
+            <ul>
+                <li>0 - I1</li>
+                <li>1 - SI2</li>
+                <li>2 - SI1</li>
+                <li>3 - VS2</li>
+                <li>4 - VS1</li>
+                <li>5 - VVS2</li>
+                <li>6 - VVS1</li>
+                <li>7 - IF</li>
+            </ul>
+        </div>
+        <div class="importance-container">
+          <h3>Importance of Diamond Jewelry</h3>
+          <p>Diamond jewelry holds significant emotional and cultural value, often symbolizing love, commitment, and status
+          Whether it's an engagement ring, a pendant, or a pair of earrings, diamonds are cherished for their beauty and rarity.</p>
+          <p>Additionally, diamond jewelry can be a valuable investment, with prices influenced by various factors including the diamond's cut, carat weight, color, clarity, and certification.</p>
+          
+          <div class="thanks-container">
+            <p>This tool was built for ECS171 Final Project at UC Davis in colloboration with:</p>
+            <p>Aditya Mittal</p>
+            <p>Andrew Yeow</p>
+            <p>Nandini Kodali</p>
+            <p>Yifan Cui</p>
+            <p>Eshan Toshniwal</p>
+        </div>
+          </div>
+    </div>
+</body>
+</html>
