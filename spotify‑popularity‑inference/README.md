@@ -4,6 +4,8 @@ This repository contains the final course project for **STA 141A — Fundament
 
 The report examines ordinary least squares, a logit transformation, and beta regression. A reduced beta regression model ultimately provided the most interpretable fit with similar predictive power to the full model.
 
+---
+
 ### Some notable results:
 
 - **Positive effects:** Danceability and loudness slightly increase song popularity.
