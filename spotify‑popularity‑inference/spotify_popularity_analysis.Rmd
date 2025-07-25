@@ -4,8 +4,8 @@ subtitle: "STA 141A Fundamentals of Statistical Data Science"
 author: "Joyce Lu, Aditya Mittal, Olga Perez, Shelly Sagy, Hanah Shih"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include = FALSE}
@@ -91,7 +91,7 @@ Initially, song_popularity is scored as an integer between 0 to 100 - indicating
 
 ```{r}
 ### preparing the data set 
-song.data <- read.csv("~/Desktop/Fall Quarter/STA 141A/final/song_data.csv")
+song.data <- read.csv("datasets/song_data.csv")
 song.data = subset(song.data, select = -c(song_name)) # removing "song_name" from the data set
 song.data$audio_mode = as.factor(song.data$audio_mode) # convert audio_mode to a factor w/ two levels: 0 (minor) and 1 (major)
 song.data = na.omit(song.data) # removing all NA values // none found
